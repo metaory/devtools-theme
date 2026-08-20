@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 
 const [, , url, file] = process.argv;
-if (!url || !file) throw new Error("usage: capture.mjs <ws> <png>");
+if (!url || !file) throw new Error("usage: screenshot.mjs <ws> <png>");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

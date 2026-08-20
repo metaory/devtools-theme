@@ -4,11 +4,12 @@ set -euo pipefail
 [[ ${1-} == -h || ${1-} == --help ]] && {
   cat <<'EOF'
 usage: apply [-f] [-o] [tar]
+  -f  fetch and extract even if frontend exists
+  -o  open Chrome after patch
+
   default tar: /tmp/devtools-frontend.tar.zst
   dest: ~/.local/share/chromium
   Windows: %LOCALAPPDATA%/chromium
-  -f  fetch and extract even if frontend exists
-  -o  open Chrome after patch
 
   needs: bash curl tar sed
   macOS tar has no zstd: brew install zstd
@@ -28,21 +29,27 @@ need sed
 
 readonly repo='metaory/devtools-theme'
 readonly artifact='devtools-frontend.tar.zst'
+
 os=$(uname -s)
 dest="$HOME/.local/share/chromium"
 frontend="file://$dest/front_end"
+
 case $os in
 MINGW* | MSYS* | CYGWIN*)
   dest=${LOCALAPPDATA:-$HOME/AppData/Local}/chromium
   dest=${dest//\\//}
-  frontend="file://$dest/front_end"
-  command -v cygpath >/dev/null &&
-    frontend="file:///$(cygpath -m "$dest")/front_end"
+  command -v cygpath >/dev/null && dest=$(cygpath -m "$dest")
+  if [[ $dest == [A-Za-z]:* ]]; then
+    frontend="file:///$dest/front_end"
+  else
+    frontend="file://$dest/front_end"
+  fi
   ;;
 esac
 
 readonly tokens="$dest/front_end/design_system_tokens.css"
 readonly common="$dest/front_end/ui/legacy/inspectorCommon.css.js"
+
 fetch='' open='' path=''
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -57,8 +64,8 @@ done
 
 tar=${path:-${TMPDIR:-/tmp}/$artifact}
 
-extract() {
-  local stage backup
+function extract {
+  local stage
   mkdir -p "$dest"
   stage=$(mktemp -d "$dest/.front_end.XXXXXX")
   if tar -xaf "$tar" -C "$stage" 2>/dev/null; then
@@ -71,6 +78,7 @@ extract() {
     exit 1
   fi
 
+  # CLEAN
   [[ -f $stage/front_end/design_system_tokens.css &&
     -f $stage/front_end/ui/legacy/inspectorCommon.css.js ]] || {
     rm -rf "$stage"
@@ -78,21 +86,20 @@ extract() {
     exit 1
   }
 
-  backup="$dest/.front_end.backup"
-  rm -rf "$backup"
-  [[ ! -e $dest/front_end && ! -L $dest/front_end ]] || mv "$dest/front_end" "$backup"
-  mv "$stage/front_end" "$dest/front_end" || {
-    [[ ! -e $backup && ! -L $backup ]] || mv "$backup" "$dest/front_end"
-    rm -rf "$stage"
-    exit 1
-  }
+  # EXTRACT
+  rm -rf "$dest/front_end"
+  mv "$stage/front_end" "$dest/front_end"
   [[ ! -f $stage/LICENSE ]] || mv "$stage/LICENSE" "$dest/LICENSE"
-  rm -rf "$backup" "$stage"
+  rm -rf "$stage"
   printf 'extract %s\n' "$dest"
 }
 
+# FETCH
 if [[ ${fetch-} || ! -f $tokens ]]; then
-  [[ ${fetch-} || -s $tar || ! ${path-} ]] || exit 1
+  [[ ${fetch-} || -s $tar || ! ${path-} ]] || {
+    printf 'missing archive: %s\n' "$tar" >&2
+    exit 1
+  }
   [[ ${fetch-} || ! -s $tar ]] && {
     need curl
     printf 'download %s\n' "$tar"
@@ -102,13 +109,14 @@ if [[ ${fetch-} || ! -f $tokens ]]; then
   extract
 fi
 
-sed -e '/\/\* === knobs.css === \*\//,$d' \
-  -e '/\/\* === config.css === \*\//,$d' \
+# TOKENS
+sed -e '/\/\* === config.css === \*\//,$d' \
   -e '/\/\* === theme.css === \*\//,$d' \
   "$tokens" >"$tokens.tmp"
 mv "$tokens.tmp" "$tokens"
 bash "$root/scripts/overlay.sh" >>"$tokens"
 
+# COMMON
 last=$(tail -n1 "$common")
 sed -e '/\/\* === inspector.css === \*\//,$d' \
   -e '/sourceURL/d' \
@@ -119,20 +127,27 @@ mv "$common.tmp" "$common"
   printf '%s\n' "$last"
 } >>"$common"
 
+# BROWSER
 browser=
 for b in chromium google-chrome google-chrome-stable \
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
   '/c/Program Files/Google/Chrome/Application/chrome.exe' \
   '/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'; do
-  command -v "$b" >/dev/null && { browser=$b; break; }
-  [[ -x "$b" ]] && { browser=$b; break; }
+  command -v "$b" >/dev/null && {
+    browser=$b
+    break
+  }
+  [[ -x "$b" ]] && {
+    browser=$b
+    break
+  }
 done
 browser=${browser:-chromium}
 
 printf 'theme %s\n%s --custom-devtools-frontend="%s"\n' \
   "$tokens" "$browser" "$frontend"
 
-chrome_running() {
+function chrome_running {
   command -v pgrep >/dev/null || return 1
   pgrep -x chromium >/dev/null ||
     pgrep -x chrome >/dev/null ||

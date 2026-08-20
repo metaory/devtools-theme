@@ -14,8 +14,6 @@ EOF
   exit 1
 fi
 
-: "${HUE:?}" "${HUES:?}" "${SPREAD:?}" "${SAT:?}"
-
 die() { printf '%s\n' "$*" >&2 && exit 1; }
 need() { command -v "$1" >/dev/null || die "missing command: $1"; }
 stop() {
@@ -25,11 +23,17 @@ stop() {
 
 browser=${BROWSER:-chromium}
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+source "$root/scripts/overlay.sh" env
+
+: "${HUE:?}" "${HUES:?}" "${SPREAD:?}" "${SAT:?}"
+
 front=$(realpath "$1")
 out="$root/.github/assets"
 tmp=$(mktemp -d)
-pid=
 shm=()
+pid=
+
 [[ ${GITHUB_ACTIONS-} ]] && shm=(--disable-dev-shm-usage)
 
 mkdir -p "$out"
@@ -48,6 +52,7 @@ function cleanup {
   [[ ${pid-} ]] && stop "$pid"
   rm -rf "$tmp" || true
 }
+
 trap cleanup EXIT
 
 cp "$root/scripts/screenshot.html" "$tmp/index.html"
@@ -98,7 +103,7 @@ function chrome_ws {
 pid=$!
 
 ws=$(chrome_ws "$tmp/profile" index.html 240 "$pid") ||
-  die "no page websocket"
+  die "‼ no page websocket"
 
 function write_app {
   cat >"$tmp/devtools.html" <<EOF
@@ -116,6 +121,7 @@ EOF
 }
 
 app="file://$tmp/devtools.html?ws=${ws#ws://}"
+
 printf 'port %s\nfrontend %s\n%s\n' "$(head -n1 "$tmp/profile/DevToolsActivePort")" "$front" "$app"
 
 function capture {
@@ -132,6 +138,7 @@ function capture {
       --window-size=1200,800 \
       "$@" "$app" >"$cap.log" 2>&1 &
     browser_pid=$!
+
     cap_ws=$(chrome_ws "$cap" devtools.html 100 "$browser_pid") || cap_ws=
 
     rm -f "$out/screenshot-$name.png"
@@ -146,12 +153,12 @@ function capture {
       return
     }
 
-    echo "retry $name ($t)" >&2
+    echo "‼ retry $name ($t)" >&2
     cat "$tmp/capture.log" "$cap.log" >&2 || true
     stop "$browser_pid"
   done
 
-  die "failed screenshot: $name"
+  die "⁈‼ failed screenshot: $name"
 }
 
 function round {
@@ -214,6 +221,7 @@ function patch_readme {
 }
 
 rm -f "$out"/screenshot-*.png
+
 read -ra hues <<<"$HUE $HUES"
 
 for i in "${!hues[@]}"; do
@@ -224,4 +232,5 @@ for i in "${!hues[@]}"; do
 done
 
 patch_readme
+
 ls -lh "$out"/screenshot-*.png

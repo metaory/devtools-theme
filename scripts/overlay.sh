@@ -7,16 +7,16 @@ pairs=(
   hue:HUE
   sat-in:SAT
   spread:SPREAD
-  hue-error:HUE_ERROR
   hue-blue:HUE_BLUE
-  hue-green:HUE_GREEN
-  hue-orange:HUE_ORANGE
-  hue-yellow:HUE_YELLOW
   hue-cyan:HUE_CYAN
   hue-pink:HUE_PINK
+  hue-green:HUE_GREEN
+  hue-error:HUE_ERROR
+  hue-orange:HUE_ORANGE
+  hue-yellow:HUE_YELLOW
 )
 
-parse() {
+function parse {
   [[ -f ${1-} ]] || return 0
   while read -r css val; do
     for p in "${pairs[@]}"; do
@@ -26,15 +26,26 @@ parse() {
   done < <(sed -En 's/^[[:space:]]*--([a-z-]+):[[:space:]]*([0-9]+);.*/\1 \2/p' "$1")
 }
 
-fill() {
+function fill {
   while read -r n val; do
     v=${!n-}
-    [[ $v =~ ^[0-9]+$ ]] || printf -v "$n" %s "$val"
+    [[ $v =~ ^[0-9]+$ ]] || v=$val
+    printf -v "$n" %s "$v"
   done < <(parse "$root/config.css")
 }
 
 [[ ${1-} == parse ]] && {
   parse "$2"
+  exit
+}
+
+[[ ${1-} == env ]] && {
+  fill
+  [[ ${BASH_SOURCE[0]} == "$0" ]] || return 0
+  for p in "${pairs[@]}"; do
+    n=${p#*:}
+    printf '%s=%s\n' "$n" "${!n}"
+  done
   exit
 }
 

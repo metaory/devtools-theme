@@ -68,8 +68,8 @@ jobs:
         id: nightly
         run: |
           sha=$(git rev-parse 'nightly^{}')
-          subject=$(git tag -l --format='%(contents:subject)' nightly)
           body=$(git tag -l --format='%(contents:body)' nightly)
+          subject=$(git tag -l --format='%(contents:subject)' nightly)
           ref=${subject%% *}
           chrome=${subject#*chromium@}
           run=$(sed -n 's/^run@\([0-9][0-9]*\)$/\1/p' <<<"$body")
@@ -117,10 +117,6 @@ jobs:
             [[ -z ${log:-} ]] || printf '\n%s\n' "${log%$'\n'}"
           } > "$RUNNER_TEMP/notes.md"
 
-      # Tag an empty commit, never the nightly SHA itself.
-      # GITHUB_TOKEN cannot create a tag pointing at a commit that touches
-      # .github/workflows/** (needs workflows permission). Empty commit has no
-      # workflow diff, so the tag push is allowed. Do not use --target.
       - name: tag
         env:
           TAG: ${{ steps.bump.outputs.tag }}

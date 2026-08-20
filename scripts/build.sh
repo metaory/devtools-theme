@@ -45,6 +45,7 @@ head="$(git -C "$source_dir" rev-parse HEAD 2>/dev/null || true)"
 [[ $head == "$sha" ]] && git -C "$source_dir" checkout -- \
   front_end/design_system_tokens.css \
   front_end/ui/legacy/inspectorCommon.css
+
 [[ $head == "$sha" ]] || git -C "$source_dir" checkout --detach --force FETCH_HEAD
 
 chrome="$(sed -n "s/^ *'chrome': '\([^']*\)'.*/\1/p" "$source_dir/DEPS")"

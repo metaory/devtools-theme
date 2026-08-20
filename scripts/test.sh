@@ -22,6 +22,7 @@ function count {
 }
 
 mkdir -p "$archive/front_end/ui/legacy"
+
 printf ':root { --upstream: 1; }\n' >"$archive/front_end/design_system_tokens.css"
 printf 'const source = true;\n//# sourceURL=inspectorCommon.css.js\n' \
   >"$archive/front_end/ui/legacy/inspectorCommon.css.js"
@@ -52,5 +53,23 @@ if HOME="$home" "$root/apply" "$tmp/invalid.tar" >/dev/null 2>&1; then
 fi
 
 [[ $(<"$front/keep") == keep ]] || fail '⁈‼ frontend was replaced after invalid archive'
+
+empty="$tmp/empty"
+mkdir -p "$empty"
+
+msg=$(HOME="$empty" "$root/apply" "$tmp/no-such.tar" 2>&1) && fail '⁈‼ missing archive accepted'
+
+[[ $msg == *'missing archive'* ]] || fail '⁈‼ missing archive silent'
+
+HUE=99 SAT=1
+
+source "$root/scripts/overlay.sh" env
+[[ $HUE == 99 ]] || fail '⁈‼ fill keeps env'
+[[ $SAT == 1 ]] || fail '⁈‼ fill keeps sat'
+unset HUE SAT
+
+source "$root/scripts/overlay.sh" env
+[[ $HUE == 270 ]] || fail '⁈‼ fill from config'
+[[ $SAT == 50 ]] || fail '⁈‼ fill sat from config'
 
 printf '✔ apply smoke test passed\n'
