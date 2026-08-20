@@ -5,8 +5,6 @@ Review of the DevTools token sheets: how they layer, what CSS actually reads, an
 Source: extracted frontend at `~/.local/share/chromium/front_end`.
 Counted exact `var(--token)` in `*.css` and `*.css.js`. Definitions in `design_system_tokens.css` are excluded. Prefix matches are excluded.
 
-Related: `theme-usage.md` (blast radius of `theme.css` sys overrides, older overlay), `theme-tokens.md` (per-token consumers of those overrides).
-
 ## Files
 
 | File                                      | Role                                                                              |
@@ -37,7 +35,7 @@ Later `:root` in the same file wins. `theme.css` therefore overrides upstream `-
 
 HTML load order (`devtools_app.html` and the other `*_app.html`):
 
-```
+```text
 application_tokens.css
 design_system_tokens.css   (includes theme overlay)
 ```
@@ -46,7 +44,7 @@ Custom properties resolve at computed-value time, so a `--sys-*` defined in the 
 
 ## Token layers
 
-```
+```text
 Chrome  --color-ref-*     (devtools://theme/colors.css, optional)
    |
    v

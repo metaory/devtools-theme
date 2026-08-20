@@ -43,7 +43,7 @@ esac
 
 readonly tokens="$dest/front_end/design_system_tokens.css"
 readonly common="$dest/front_end/ui/legacy/inspectorCommon.css.js"
-fetch= open= path=
+fetch='' open='' path=''
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 while [[ $# -gt 0 ]]; do
@@ -58,16 +58,36 @@ done
 tar=${path:-${TMPDIR:-/tmp}/$artifact}
 
 extract() {
-  rm -rf "$dest/front_end"
+  local stage backup
   mkdir -p "$dest"
-  if tar -xaf "$tar" -C "$dest" 2>/dev/null; then
+  stage=$(mktemp -d "$dest/.front_end.XXXXXX")
+  if tar -xaf "$tar" -C "$stage" 2>/dev/null; then
     :
-  elif command -v zstd >/dev/null; then
-    zstd -dc "$tar" | tar -xf - -C "$dest"
+  elif command -v zstd >/dev/null && zstd -dc "$tar" | tar -xf - -C "$stage"; then
+    :
   else
+    rm -rf "$stage"
     printf 'need zstd, or a tar that reads .zst\n' >&2
     exit 1
   fi
+
+  [[ -f $stage/front_end/design_system_tokens.css &&
+    -f $stage/front_end/ui/legacy/inspectorCommon.css.js ]] || {
+    rm -rf "$stage"
+    printf 'archive has no DevTools frontend\n' >&2
+    exit 1
+  }
+
+  backup="$dest/.front_end.backup"
+  rm -rf "$backup"
+  [[ ! -e $dest/front_end && ! -L $dest/front_end ]] || mv "$dest/front_end" "$backup"
+  mv "$stage/front_end" "$dest/front_end" || {
+    [[ ! -e $backup && ! -L $backup ]] || mv "$backup" "$dest/front_end"
+    rm -rf "$stage"
+    exit 1
+  }
+  [[ ! -f $stage/LICENSE ]] || mv "$stage/LICENSE" "$dest/LICENSE"
+  rm -rf "$backup" "$stage"
   printf 'extract %s\n' "$dest"
 }
 

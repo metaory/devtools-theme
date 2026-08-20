@@ -69,26 +69,20 @@ jobs:
         run: |
           sha=$(git rev-parse 'nightly^{}')
           subject=$(git tag -l --format='%(contents:subject)' nightly)
+          body=$(git tag -l --format='%(contents:body)' nightly)
           ref=${subject%% *}
           chrome=${subject#*chromium@}
-          [[ $subject == *chromium@* && -n $ref && -n $chrome ]]
+          run=$(sed -n 's/^run@\([0-9][0-9]*\)$/\1/p' <<<"$body")
+          [[ $subject == *chromium@* && -n $ref && -n $chrome && $run =~ ^[0-9]+$ ]] || {
+            printf 'nightly needs a successful Build with run metadata\n' >&2
+            exit 1
+          }
           {
             printf 'sha=%s\n' "$sha"
             printf 'ref=%s\n' "$ref"
             printf 'chrome=%s\n' "$chrome"
+            printf 'run=%s\n' "$run"
           } | tee -a "$GITHUB_OUTPUT"
-
-      - name: resolve artifact
-        id: run
-        env:
-          SHA: ${{ steps.nightly.outputs.sha }}
-        run: |
-          run=$(gh run list --workflow Build --status success --limit 30 \
-            --json databaseId,headSha |
-            jq -r --arg sha "$SHA" '.[] | select(.headSha == $sha) | .databaseId' |
-            head -n1)
-          test -n "$run"
-          printf 'id=%s\n' "$run" | tee -a "$GITHUB_OUTPUT"
 
       - name: check release
         env:
@@ -103,7 +97,7 @@ jobs:
         with:
           path: ${{ runner.temp }}
           name: devtools-frontend.tar.zst
-          run-id: ${{ steps.run.outputs.id }}
+          run-id: ${{ steps.nightly.outputs.run }}
           github-token: ${{ github.token }}
 
       - name: release notes
@@ -123,6 +117,10 @@ jobs:
             [[ -z ${log:-} ]] || printf '\n%s\n' "${log%$'\n'}"
           } > "$RUNNER_TEMP/notes.md"
 
+      # Tag an empty commit, never the nightly SHA itself.
+      # GITHUB_TOKEN cannot create a tag pointing at a commit that touches
+      # .github/workflows/** (needs workflows permission). Empty commit has no
+      # workflow diff, so the tag push is allowed. Do not use --target.
       - name: tag
         env:
           TAG: ${{ steps.bump.outputs.tag }}
@@ -141,12 +139,11 @@ jobs:
       - name: create release
         env:
           TAG: ${{ steps.bump.outputs.tag }}
-          CHROME: ${{ steps.nightly.outputs.chrome }}
         run: |
           file=$RUNNER_TEMP/devtools-frontend.tar.zst
           test -f "$file"
           pre=()
           [[ $TAG == *-* ]] && pre=(--prerelease)
           gh release create "$TAG" "$file" --draft \
-            --title "$TAG for Chrome ${CHROME%%.*}" \
+            --title "$TAG" \
             --notes-file "$RUNNER_TEMP/notes.md" "${pre[@]}"

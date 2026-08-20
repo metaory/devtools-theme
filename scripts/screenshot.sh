@@ -164,7 +164,9 @@ function round {
 }
 
 function pair {
-  local n=$1 light=$out/screenshot-$n-light.png dark=$out/screenshot-$n-dark.png
+  local n=$1
+  local light=$out/screenshot-$n-light.png
+  local dark=$out/screenshot-$n-dark.png
   local w h dx dy
   round "$light"
   round "$dark"
