@@ -124,12 +124,24 @@ async function showDrawer() {
 }
 
 async function selectApp() {
-  const { ElementsPanel } = await import(
-    new URL("panels/elements/elements.js", document.querySelector("base").href).href
-  );
+  const base = document.querySelector("base").href;
+  const [{ ElementsPanel }, { ViewManager }] = await Promise.all([
+    import(new URL("panels/elements/elements.js", base).href),
+    import(new URL("ui/legacy/legacy.js", base).href),
+  ]);
+  await ViewManager.ViewManager.instance().showView("elements");
   const panel = ElementsPanel.ElementsPanel.instance();
-  const root = panel.getTreeOutlineForTesting()?.rootDOMNode;
-  if (!root) throw new Error("elements tree has no root");
+  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+  const deadline = performance.now() + 20_000;
+
+  const rootOf = () => panel.getTreeOutlineForTesting()?.rootDOMNode;
+
+  let root = rootOf();
+  while (!root) {
+    if (performance.now() >= deadline) throw new Error("elements tree has no root");
+    await pause(100);
+    root = rootOf();
+  }
 
   const walk = async (node) => {
     if (node.getAttribute?.("id") === "app") return node;
@@ -137,8 +149,11 @@ async function selectApp() {
     return kids.reduce(async (found, kid) => (await found) ?? walk(kid), Promise.resolve());
   };
 
-  const node = await walk(root);
-  if (!node) throw new Error("no #app in elements tree");
+  let node;
+  while (!(node = await walk(rootOf() ?? root))) {
+    if (performance.now() >= deadline) throw new Error("no #app in elements tree");
+    await pause(100);
+  }
   panel.selectDOMNode(node, true);
 }
 
