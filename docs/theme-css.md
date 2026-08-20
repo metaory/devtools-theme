@@ -2,10 +2,8 @@
 
 Review of the DevTools token sheets: how they layer, what CSS actually reads, and how this fork overlays them.
 
-Source: extracted frontend at `~/.local/share/chromium/front_end`, overlay cache at `~/.local/share/chromium/design_system_tokens.base.css`.
+Source: extracted frontend at `~/.local/share/chromium/front_end`.
 Counted exact `var(--token)` in `*.css` and `*.css.js`. Definitions in `design_system_tokens.css` are excluded. Prefix matches are excluded.
-
-Upstream Chromium has no `design_system_tokens.base.css`. That file is a local snapshot written by `scripts/development.sh`.
 
 Related: `theme-usage.md` (blast radius of `theme.css` sys overrides, older overlay), `theme-tokens.md` (per-token consumers of those overrides).
 
@@ -14,11 +12,11 @@ Related: `theme-usage.md` (blast radius of `theme.css` sys overrides, older over
 | File                                      | Role                                                                              |
 | ----------------------------------------- | --------------------------------------------------------------------------------- |
 | `front_end/design_system_tokens.css`      | Palette + sys tokens. HTML `<link>`. Overlay is concatenated here                 |
-| `design_system_tokens.base.css`           | Local cache of upstream tokens, used to reapply `theme.css` without re-extracting |
 | `front_end/application_tokens.css`        | Icons, app, legacy `--color-*`. HTML `<link>`                                     |
 | `front_end/ui/legacy/inspectorCommon.css` | Global chrome. Injected as `inspectorCommon.css.js`                               |
 | `inspector.css` (this repo)               | Overlay for `inspectorCommon.css.js`. Checkbox fill                               |
-| `theme.css` (this repo)                   | Overlay for `design_system_tokens.css`. Palette re tint                           |
+| `config.css` (this repo)                  | Input numbers (`--hue`, `--sat-in`, `--spread`, `--hue-*`). Concatenated first    |
+| `theme.css` (this repo)                   | Overlay for `design_system_tokens.css`. Palette re tint from knob vars            |
 | `ui/components/buttons/textButton.css`    | `.text-button`. Also a `.css.js` module                                           |
 | `entrypoints/greendev_floaty/floaty.css`  | Gemini floaty. Tokens disabled (`stylelint plugin/use_theme_colors`)              |
 
@@ -26,14 +24,14 @@ The built frontend ships **5** raw `.css` files and **383** `.css.js` modules. A
 
 ## Overlay pipeline
 
-`scripts/development.sh`:
+`scripts/overlay.sh` is the only CSS writer. `scripts/build.sh` and `apply` both call it.
 
-1. Extract `front_end/` from the release tar.
-2. Strip any previous `/* === theme.css === */` block from `design_system_tokens.css`, write the remainder to `design_system_tokens.base.css`. Also stops at a second `:root {` if the marker is missing.
-3. `overlay.sh theme.css` is concatenated onto that base, replacing `front_end/design_system_tokens.css`.
-4. `overlay.sh inspector.css` is appended onto `inspectorCommon.css.js` (the injected copy). The leftover `.css` file is unused by DevTools itself; only `floaty.html` links it.
+1. Extract `front_end/` from the release tar (`apply`) or overlay Chromium source before ninja (`build.sh`).
+2. Strip any previous `/* === knobs.css === */`, `/* === config.css === */`, or `/* === theme.css === */` block from `design_system_tokens.css`.
+3. `overlay.sh` reprints config (merge `config.css` with numeric env) then concatenates `theme.css`.
+4. `overlay.sh inspector.css` is appended onto `inspectorCommon.css.js` locally, or onto `inspectorCommon.css` at compile time. The leftover `.css` file is unused by DevTools itself; only `floaty.html` links it.
 
-`scripts/build.sh` does the same concatenation at compile time onto the Chromium source copies, then ninja emits the release.
+No `@import`. Chrome never loads `config.css` as a file.
 
 Later `:root` in the same file wins. `theme.css` therefore overrides upstream `--ref-palette-*` and the few `--sys-color-*` it sets.
 
@@ -129,7 +127,7 @@ Two kinds of family:
 | Dynamic | `primary` `secondary` `tertiary` `error` `neutral` `neutral-variant` | yes, with rgb fallback |
 | Fixed   | `blue` `green` `orange` `yellow` `cyan` `purple` `pink` `indigo`     | no, rgb only           |
 
-`theme.css` rewrites **both** kinds to HSL from `--hue`, `--hue-*`, `--spread`, `--sat`. Fixed families keep their own hue knobs (`HUE_BLUE`, `HUE_ERROR`, ...) so syntax and file icons stay distinct from chrome.
+`theme.css` rewrites **both** kinds to HSL from `--hue`, `--hue-*`, `--spread`, `--sat`. Fixed families keep their own hue knobs in `config.css` (`--hue-blue`, `--hue-error`, ...) so syntax and file icons stay distinct from chrome.
 
 Upstream comment: do not change and do not use `--ref-palette-*` in component CSS. FlameChart still reads `--ref-palette-neutral10` via `getComputedValue` in JS.
 
@@ -281,7 +279,7 @@ input[type="checkbox"]:not(:checked, .-theme-preserve) {
 }
 ```
 
-`development.sh` appends that onto `inspectorCommon.css.js`. A fresh extract without running the script has no overlay marker there.
+`apply` appends that onto `inspectorCommon.css.js`. A fresh extract without running the script has no overlay marker there.
 
 `devtools_app.html` still flashes `body { background-color: rgb(41 42 45) }` under `prefers-color-scheme: dark` before tokens apply.
 
@@ -312,7 +310,7 @@ JS canvas (`FlameChart`, `TimelineOverviewPane`, `trace/Styles.js`) reads sys an
 
 ## What to tune from here
 
-1. **Palette knobs in `theme.css`** (`HUE` `SAT` `SPREAD` `HUE_*`) already retint chrome, syntax, and icons that go through `--ref-palette-*`.
+1. **Palette knobs in `config.css`** (`--hue` `--sat-in` `--spread` `--hue-*`) already retint chrome, syntax, and icons that go through `--ref-palette-*`.
 2. **Hardcoded sys surfaces** (`surface-yellow` `surface-error` `surface-green` and state washes) stay Google yellow/red/green until someone maps them to palette mixes.
 3. **`--color-*` legacy** ignores the overlay. Anything still on `--color-background` / `--color-text-primary` / `--legacy-accent-color` stays Material Grey/Blue.
 4. **`--app-color-*` flame-chart ramps** follow palette (they alias `--ref-palette-blue70` etc.). Invalid `neutral87` / `green4` do not.

@@ -2,31 +2,52 @@
 set -euo pipefail
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-file=${1:-theme.css}
 
-printf '\n/* === %s === */\n' "$file"
-[[ $file == inspector.css ]] && exec cat "$root/$file"
-
-knobs=(
-  HUE=270
-  HUE_ERROR=10
-  HUE_BLUE=220
-  HUE_GREEN=140
-  HUE_ORANGE=30
-  HUE_YELLOW=50
-  HUE_CYAN=190
-  HUE_PINK=330
-  SPREAD=20
-  SAT=50
+pairs=(
+  hue:HUE
+  sat-in:SAT
+  spread:SPREAD
+  hue-error:HUE_ERROR
+  hue-blue:HUE_BLUE
+  hue-green:HUE_GREEN
+  hue-orange:HUE_ORANGE
+  hue-yellow:HUE_YELLOW
+  hue-cyan:HUE_CYAN
+  hue-pink:HUE_PINK
 )
 
-expr=
-for k in "${knobs[@]}"; do
-  n=${k%%=*}
-  d=${k#*=}
-  v=${!n-}
-  [[ $v =~ ^[0-9]+$ ]] || v=$d
-  expr+="s/\"\\\$$n\"/$v/;"
-done
+parse() {
+  [[ -f ${1-} ]] || return 0
+  while read -r css val; do
+    for p in "${pairs[@]}"; do
+      [[ ${p%%:*} == "$css" ]] || continue
+      printf '%s %s\n' "${p#*:}" "$val"
+    done
+  done < <(sed -En 's/^[[:space:]]*--([a-z-]+):[[:space:]]*([0-9]+);.*/\1 \2/p' "$1")
+}
 
-sed "$expr" "$root/$file"
+fill() {
+  while read -r n val; do
+    v=${!n-}
+    [[ $v =~ ^[0-9]+$ ]] || printf -v "$n" %s "$val"
+  done < <(parse "$root/config.css")
+}
+
+[[ ${1-} == parse ]] && {
+  parse "$2"
+  exit
+}
+
+[[ ${1-} == inspector.css ]] && {
+  printf '\n/* === inspector.css === */\n'
+  exec cat "$root/inspector.css"
+}
+
+fill
+printf '\n/* === config.css === */\n:root {\n'
+for p in "${pairs[@]}"; do
+  n=${p#*:}
+  printf '  --%s: %s;\n' "${p%%:*}" "${!n}"
+done
+printf '}\n\n/* === theme.css === */\n'
+cat "$root/theme.css"

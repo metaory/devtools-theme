@@ -10,16 +10,6 @@
       _||_||_*/
 
 :root {
-  --hue: "$HUE";
-  --hue-error: "$HUE_ERROR";
-  --hue-blue: "$HUE_BLUE";
-  --hue-green: "$HUE_GREEN";
-  --hue-orange: "$HUE_ORANGE";
-  --hue-yellow: "$HUE_YELLOW";
-  --hue-cyan: "$HUE_CYAN";
-  --hue-pink: "$HUE_PINK";
-  --spread: "$SPREAD";
-  --sat-in: "$SAT";
   --sat: calc(var(--sat-in) / 50);
 
   --hue-primary: var(--hue);
