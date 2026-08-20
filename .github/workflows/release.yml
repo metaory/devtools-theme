@@ -123,16 +123,26 @@ jobs:
             [[ -z ${log:-} ]] || printf '\n%s\n' "${log%$'\n'}"
           } > "$RUNNER_TEMP/notes.md"
 
-      - name: create release
+      - name: tag
         env:
           TAG: ${{ steps.bump.outputs.tag }}
           SHA: ${{ steps.nightly.outputs.sha }}
+          CHROME: ${{ steps.nightly.outputs.chrome }}
+        run: |
+          git -c user.name=github-actions[bot] \
+            -c user.email=github-actions[bot]@users.noreply.github.com \
+            tag -a "$TAG" "$SHA" -m "$TAG for Chrome ${CHROME%%.*}"
+          git push origin "refs/tags/$TAG"
+
+      - name: create release
+        env:
+          TAG: ${{ steps.bump.outputs.tag }}
           CHROME: ${{ steps.nightly.outputs.chrome }}
         run: |
           file=$RUNNER_TEMP/devtools-frontend.tar.zst
           test -f "$file"
           pre=()
           [[ $TAG == *-* ]] && pre=(--prerelease)
-          gh release create "$TAG" "$file" --draft --target "$SHA" \
+          gh release create "$TAG" "$file" --draft \
             --title "$TAG for Chrome ${CHROME%%.*}" \
             --notes-file "$RUNNER_TEMP/notes.md" "${pre[@]}"
