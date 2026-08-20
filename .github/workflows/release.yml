@@ -94,10 +94,9 @@ jobs:
         env:
           TAG: ${{ steps.bump.outputs.tag }}
         run: |
-          gh release view "$TAG" >/dev/null 2>&1 && {
-            printf 'release %s already exists\n' "$TAG" >&2
-            exit 1
-          }
+          gh release view "$TAG" >/dev/null 2>&1 || exit 0
+          printf 'release %s already exists\n' "$TAG" >&2
+          exit 1
 
       - name: download artifact
         uses: actions/download-artifact@v8
