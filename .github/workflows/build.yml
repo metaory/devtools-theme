@@ -2,15 +2,17 @@ name: Build
 
 on:
   push:
+    branches: [master]
     paths:
       - theme.css
+      - config.css
       - inspector.css
-      - upstream
       - scripts/build.sh
       - scripts/overlay.sh
       - scripts/resolve.sh
       - scripts/screenshot.sh
       - scripts/screenshot.mjs
+      - scripts/screenshot.html
       - .github/workflows/**
   workflow_dispatch:
     inputs:
@@ -18,73 +20,64 @@ on:
         description: theme hue
         required: false
         type: number
-        default: 270
-      hue_error:
-        description: error hue
-        required: false
-        type: number
-        default: 10
-      hue_blue:
-        description: blue hue
-        required: false
-        type: number
-        default: 220
-      hue_green:
-        description: green hue
-        required: false
-        type: number
-        default: 140
-      hue_orange:
-        description: orange hue
-        required: false
-        type: number
-        default: 30
-      hue_yellow:
-        description: yellow hue
-        required: false
-        type: number
-        default: 50
-      hue_cyan:
-        description: cyan hue
-        required: false
-        type: number
-        default: 190
-      hue_pink:
-        description: pink hue
-        required: false
-        type: number
-        default: 330
-      spread:
-        description: chrome hue spread
-        required: false
-        type: number
-        default: 20
       sat:
         description: saturation 0-100
         required: false
         type: number
-        default: 50
+      spread:
+        description: chrome hue spread
+        required: false
+        type: number
+      hue_error:
+        description: error hue
+        required: false
+        type: number
+      hue_blue:
+        description: blue hue
+        required: false
+        type: number
+      hue_green:
+        description: green hue
+        required: false
+        type: number
+      hue_orange:
+        description: orange hue
+        required: false
+        type: number
+      hue_yellow:
+        description: yellow hue
+        required: false
+        type: number
+      hue_cyan:
+        description: cyan hue
+        required: false
+        type: number
+      hue_pink:
+        description: pink hue
+        required: false
+        type: number
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 6 1 * *"
 
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 env:
+  CHANNEL: stable
+  SAT: ${{ github.event.inputs.sat }}
   HUE: ${{ github.event.inputs.hue }}
-  HUE_ERROR: ${{ github.event.inputs.hue_error }}
+  SPREAD: ${{ github.event.inputs.spread }}
   HUE_BLUE: ${{ github.event.inputs.hue_blue }}
+  HUE_CYAN: ${{ github.event.inputs.hue_cyan }}
+  HUE_PINK: ${{ github.event.inputs.hue_pink }}
   HUE_GREEN: ${{ github.event.inputs.hue_green }}
   HUE_ORANGE: ${{ github.event.inputs.hue_orange }}
   HUE_YELLOW: ${{ github.event.inputs.hue_yellow }}
-  HUE_CYAN: ${{ github.event.inputs.hue_cyan }}
-  HUE_PINK: ${{ github.event.inputs.hue_pink }}
-  SPREAD: ${{ github.event.inputs.spread }}
-  SAT: ${{ github.event.inputs.sat }}
+  HUE_ERROR: ${{ github.event.inputs.hue_error }}
 
 jobs:
   resolve:
@@ -92,19 +85,20 @@ jobs:
     timeout-minutes: 2
     outputs:
       ref: ${{ steps.resolve.outputs.ref }}
-      chrome: ${{ steps.resolve.outputs.chrome }}
       skip: ${{ steps.check.outputs.skip }}
+      chrome: ${{ steps.resolve.outputs.chrome }}
     steps:
       - uses: actions/checkout@v7
 
       - id: resolve
+        name: resolve
         run: scripts/resolve.sh
 
       - id: check
         name: Skip schedule if ref unchanged
         env:
-          REF: ${{ steps.resolve.outputs.ref }}
           EVENT: ${{ github.event_name }}
+          REF: ${{ steps.resolve.outputs.ref }}
         run: |
           skip=false
           git fetch origin tag nightly --force || true
@@ -112,11 +106,25 @@ jobs:
           [[ $EVENT == schedule && -n $last && ${last%% *} == "$REF" ]] && skip=true
           printf 'skip=%s\n' "$skip" | tee -a "$GITHUB_OUTPUT"
 
-  build:
+  test:
     needs: resolve
+    if: needs.resolve.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: apply smoke test
+        run: scripts/test.sh
+
+  build:
+    needs: [resolve, test]
     if: needs.resolve.outputs.skip != 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    outputs:
+      sha: ${{ steps.build.outputs.sha }}
+      chrome: ${{ steps.build.outputs.chrome }}
 
     steps:
       - uses: actions/checkout@v7
@@ -132,12 +140,12 @@ jobs:
           key: work-${{ needs.resolve.outputs.ref }}-${{ hashFiles('scripts/build.sh') }}
 
       - id: build
-        run: scripts/build.sh
         name: build
+        run: scripts/build.sh
         env:
+          REF: ${{ needs.resolve.outputs.ref }}
           WORK: ${{ runner.temp }}/devtools-work
           ARTIFACT: ${{ runner.temp }}/devtools-frontend.tar.zst
-          REF: ${{ needs.resolve.outputs.ref }}
 
       - uses: actions/upload-artifact@v7
         name: upload artifact
@@ -147,26 +155,17 @@ jobs:
           if-no-files-found: error
           path: ${{ runner.temp }}/devtools-frontend.tar.zst
 
-      - name: tag nightly
-        env:
-          REF: ${{ needs.resolve.outputs.ref }}
-          SHA: ${{ steps.build.outputs.sha }}
-          CHROME: ${{ needs.resolve.outputs.chrome || steps.build.outputs.chrome }}
-        run: |
-          git -c user.name=github-actions[bot] -c user.email=github-actions[bot]@users.noreply.github.com \
-            tag -a -f nightly "$GITHUB_SHA" -m "$(printf '%s chromium@%s\n\n%s\n%s\n' \
-              "$REF" "$CHROME" "$SHA" \
-              "$(git log -1 --format=%s "$GITHUB_SHA")")"
-          git push -f origin refs/tags/nightly
-
   screenshot:
     needs: build
+    if: success() && github.ref == 'refs/heads/master'
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ github.sha }}
 
       - uses: actions/download-artifact@v8
         name: download artifact
@@ -180,17 +179,68 @@ jobs:
       - name: capture screenshot
         env:
           BROWSER: google-chrome-stable
+          HUES: 80 180 250 280 320 10
         run: scripts/screenshot.sh ${{ runner.temp }}/front_end
 
-      - name: commit
+      - name: publish screenshots
         run: |
-          git add .github/assets/screenshot-*.png
-          git add -u .github/assets
-          git diff --cached --quiet && exit 0
-          git -c user.name=github-actions[bot] -c user.email=github-actions[bot]@users.noreply.github.com \
+          dest=$(mktemp -d)
+          cp .github/assets/screenshot-*.png "$dest/"
+          awk '/<!-- screenshots -->/,/<!-- \/screenshots -->/' README.md >"$dest/README.md"
+
+          git fetch origin screenshots:refs/tmp/screenshots 2>/dev/null || true
+          if git rev-parse --verify refs/tmp/screenshots >/dev/null 2>&1; then
+            old=$(mktemp -d)
+            git archive refs/tmp/screenshots | tar -C "$old" -xf -
+            diff -q "$dest" "$old" >/dev/null && exit 0
+          fi
+
+          git -C "$dest" init --initial-branch=screenshots
+          git -C "$dest" add screenshot-*.png README.md
+          git -C "$dest" -c user.name=github-actions[bot] \
+            -c user.email=github-actions[bot]@users.noreply.github.com \
             commit -m "$(cat <<'EOF'
           Update DevTools screenshots.
 
           EOF
           )"
+          git fetch "$dest" HEAD
+          git push -f origin FETCH_HEAD:refs/heads/screenshots
+
+      - name: publish readme
+        run: |
+          git diff --quiet HEAD -- README.md && exit 0
+          git add README.md
+          git -c user.name=github-actions[bot] \
+            -c user.email=github-actions[bot]@users.noreply.github.com \
+            commit -m "$(cat <<'EOF'
+          Update screenshot gallery.
+
+          EOF
+          )"
           git push
+
+  publish:
+    needs: [resolve, build, screenshot]
+    if: success() && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: tag nightly
+        env:
+          RUN: ${{ github.run_id }}
+          SHA: ${{ needs.build.outputs.sha }}
+          REF: ${{ needs.resolve.outputs.ref }}
+          CHROME: ${{ needs.resolve.outputs.chrome || needs.build.outputs.chrome }}
+        run: |
+          git -c user.name=github-actions[bot] -c user.email=github-actions[bot]@users.noreply.github.com \
+            tag -a -f nightly "$GITHUB_SHA" -m "$(printf '%s chromium@%s\n\n%s\nrun@%s\n%s\n' \
+              "$REF" "$CHROME" "$SHA" "$RUN" \
+              "$(git log -1 --format=%s "$GITHUB_SHA")")"
+          git push -f origin refs/tags/nightly

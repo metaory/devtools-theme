@@ -189,6 +189,7 @@ const { data } = await cdp.send("Page.captureScreenshot", {
   fromSurface: true,
   captureBeyondViewport: false,
 });
+
 if (!data) throw new Error("Page.captureScreenshot returned no image");
 
 await writeFile(file, Buffer.from(data, "base64"));

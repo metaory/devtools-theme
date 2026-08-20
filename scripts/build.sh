@@ -14,13 +14,13 @@ test -n "$REF"
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 work="${WORK:-$(mktemp -d "${RUNNER_TEMP:-/tmp}/devtools-custom.XXXXXX")}"
 
-readonly artifact="${ARTIFACT:-${RUNNER_TEMP:-$PWD}/devtools-frontend.tar.zst}"
+readonly root work ref="$REF"
 readonly source_dir="$work/devtools/devtools-frontend"
 readonly tokens="$source_dir/front_end/design_system_tokens.css"
 readonly inspector="$source_dir/front_end/ui/legacy/inspectorCommon.css"
 readonly upstream_url='https://github.com/ChromeDevTools/devtools-frontend'
+readonly artifact="${ARTIFACT:-${RUNNER_TEMP:-$PWD}/devtools-frontend.tar.zst}"
 readonly depot_url='https://chromium.googlesource.com/chromium/tools/depot_tools.git'
-readonly root work ref="$REF"
 
 export PATH="$work/depot_tools:$PATH"
 export DEPOT_TOOLS_UPDATE=0

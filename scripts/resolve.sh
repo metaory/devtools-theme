@@ -1,18 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly dash='https://chromiumdash.appspot.com/fetch_releases'
 
-spec="${REF:-${UPSTREAM:-$(<"$root/upstream")}}"
+spec="${REF:-${CHANNEL:-stable}}"
 spec="${spec//$'\n'/}"
-chrome=
 milestone=
 ref=$spec
+chrome=
 
 [[ $spec == stable || $spec == beta || $spec == canary ]] && {
   read -r build chrome milestone <<<"$(
-    curl -fsSL -A devtools-frontend-custom \
+    curl -fsSL -A devtools-theme \
       "$dash?channel=$spec&platform=Linux&num=1" |
       jq -r '.[0] | "\(.version|split(".")|.[2]) \(.version) \(.milestone)"'
   )"

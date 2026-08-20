@@ -1,31 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-c0=$'\e[0m'
-c1=$'\e[31m'
-c2=$'\e[32m'
-c3=$'\e[33m'
-c4=$'\e[34m'
-c5=$'\e[35m'
-c6=$'\e[36m'
-
 if [[ ! ${1-} ]]; then
   cat <<EOF
- ${c3}${c1}usage${c0} ${c4}screenshot.sh${c3} front_end
-   ${c5}writes${c2} .github/assets/screenshot-{1..n}.png ${c0}
-   ${c6}HUES${c0}    ${c2}270 180 90 0${c0}
-   ${c6}SPREAD${c0}  ${c2}20${c0}
-   ${c6}SAT${c0}     ${c2}50${c0}
-   ${c6}RADIUS${c0}  ${c2}32${c0}
+usage: screenshot.sh front_end
+  writes .github/assets/screenshot-{1..n}.png
+  HUES SPREAD SAT  required
+  RADIUS           32
 
- ${c3}${c4}screenshot.sh${c0} ${c3}front_end${c0}
- ${c6}HUES${c0}=${c2}'270 0'${c0} ${c4}screenshot.sh${c0} ${c3}front_end${c0}
- ${c6}SPREAD${c0}=${c2}40${c0} ${c6}SAT${c0}=${c2}20${c0} ${c4}screenshot.sh${c0} ${c3}front_end${c0}
- ${c6}HUES${c0}=${c2}180${c0} ${c6}SPREAD${c0}=${c2}30${c0} ${c6}SAT${c0}=${c2}35${c0} ${c4}screenshot.sh${c0} ${c3}front_end${c0}
- ${c6}RADIUS${c0}=${c2}48${c0} ${c4}screenshot.sh${c0} ${c3}front_end${c0}
+HUES='270 180 90 0' SPREAD=20 SAT=50 screenshot.sh front_end
 EOF
   exit 1
 fi
+
+: "${HUES:?}" "${SPREAD:?}" "${SAT:?}"
 
 die() { printf '%s\n' "$*" >&2 && exit 1; }
 need() { command -v "$1" >/dev/null || die "missing command: $1"; }
@@ -45,7 +33,7 @@ shm=()
 
 mkdir -p "$out"
 
-for c in "$browser" convert identify curl jq node; do need "$c"; done
+for c in "$browser" convert identify curl jq node awk; do need "$c"; done
 
 test -f "$front/devtools_app.html" || die "missing $front/devtools_app.html"
 
@@ -121,7 +109,7 @@ function write_app {
 <script type=module src="entrypoints/devtools_app/devtools_app.js"></script>
 <link href="application_tokens.css" rel=stylesheet>
 <link href="design_system_tokens.css" rel=stylesheet>
-<style>:root{--hue:$1;--spread:${SPREAD:-20};--sat-in:${SAT:-50}}</style>
+<style>:root{--hue:${1};--spread:${SPREAD};--sat-in:${SAT}}</style>
 <body class=undocked id=-blink-dev-tools style="--user-color-source:baseline-default">
 EOF
 }
@@ -144,7 +132,9 @@ function capture {
       "$@" "$app" >"$cap.log" 2>&1 &
     browser_pid=$!
     cap_ws=$(chrome_ws "$cap" devtools.html 100 "$browser_pid") || cap_ws=
+
     rm -f "$out/screenshot-$name.png"
+
     [[ $cap_ws == ws://* ]] &&
       node "$root/scripts/screenshot.mjs" "$cap_ws" "$out/screenshot-$name.png" \
         >"$tmp/capture.log" 2>&1 &&
@@ -154,10 +144,12 @@ function capture {
       stop "$browser_pid"
       return
     }
+
     echo "retry $name ($t)" >&2
     cat "$tmp/capture.log" "$cap.log" >&2 || true
     stop "$browser_pid"
   done
+
   die "failed screenshot: $name"
 }
 
@@ -167,7 +159,7 @@ function round {
   read -r w h < <(identify -format '%w %h\n' "$img")
   convert "$img" \
     \( -size "${w}x${h}" xc:none \
-       -draw "roundrectangle 0,0 $((w-1)),$((h-1)) $r,$r" \) \
+    -draw "roundrectangle 0,0 $((w - 1)),$((h - 1)) $r,$r" \) \
     -alpha set -compose DstIn -composite "$img"
 }
 
@@ -186,7 +178,40 @@ function pair {
   rm -f "$light" "$dark"
 }
 
-read -ra hues <<<"${HUES:-270 180 90 0}"
+function gallery {
+  local n=${#hues[@]} i repo=${GITHUB_REPOSITORY:-metaory/devtools-theme}
+  local src="https://raw.githubusercontent.com/$repo/screenshots"
+  printf '  <!-- screenshots -->\n'
+  for ((i = 1; i <= n; i++)); do
+    ((i % 2)) && printf '  '
+    printf '<img src="%s/screenshot-%s.png" width="40%%" />' "$src" "$i"
+    ((i % 2 && i < n)) && printf '&nbsp;&nbsp;'
+    ((i % 2 == 0 && i < n)) && printf '\n  <br>\n  <br>\n'
+    ((i == n)) && printf '\n'
+  done
+  printf '  <!-- /screenshots -->\n'
+}
+
+function patch_readme {
+  local readme=$root/README.md
+  grep -q '<!-- screenshots -->' "$readme" || die "missing README screenshot start marker"
+  grep -q '<!-- /screenshots -->' "$readme" || die "missing README screenshot end marker"
+  gallery >"$tmp/gallery"
+  awk '
+    /<!-- screenshots -->/ {
+      while ((getline line < g) > 0) print line
+      close(g)
+      skip=1
+      next
+    }
+    /<!-- \/screenshots -->/ { skip=0; next }
+    !skip
+  ' g="$tmp/gallery" "$readme" >"$tmp/README.md"
+  mv "$tmp/README.md" "$readme"
+}
+
+rm -f "$out"/screenshot-*.png
+read -ra hues <<<"$HUES"
 
 for i in "${!hues[@]}"; do
   write_app "${hues[i]}"
@@ -196,4 +221,5 @@ for i in "${!hues[@]}"; do
   pair "$n"
 done
 
+patch_readme
 ls -lh "$out"/screenshot-*.png

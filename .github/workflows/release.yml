@@ -3,10 +3,16 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: semver (0.1.0-rc.1)
+      bump:
+        description: semver bump from latest v* tag
         required: true
-        type: string
+        type: choice
+        options:
+          - rc
+          - patch
+          - minor
+          - major
+        default: rc
       notes:
         description: extra release notes
         required: false
@@ -30,16 +36,32 @@ jobs:
           fetch-depth: 0
 
       - env:
-          NOTES: ${{ github.event.inputs.notes }}
-          VERSION: ${{ github.event.inputs.version }}
           GH_TOKEN: ${{ github.token }}
+          BUMP: ${{ github.event.inputs.bump }}
+          NOTES: ${{ github.event.inputs.notes }}
         run: |
-          tag=$VERSION
-          [[ $tag == v* ]] || tag=v$tag
-          test -n "$tag"
-
           git fetch origin --tags --force
 
+          last=$(git tag -l 'v[0-9]*' --sort=-version:refname | head -n1)
+          ver=${last#v}
+          ver=${ver:-0.1.0}
+          core=${ver%%-*}
+          pre=${ver#"$core"}
+          n=${pre#-rc.}
+
+          IFS=. read -r maj min pat <<< "$core"
+
+          case $BUMP in
+            major) ver="$((maj + 1)).0.0" ;;
+            minor) ver="$maj.$((min + 1)).0" ;;
+            patch) [[ $pre == -rc.* ]] && ver=$core || ver="$maj.$min.$((pat + 1))" ;;
+            rc)
+              [[ $pre == -rc.* ]] && ver="$core-rc.$((n + 1))" \
+                || ver="$maj.$min.$((pat + 1))-rc.1"
+              ;;
+          esac
+
+          tag=v$ver
           sha=$(git rev-parse 'nightly^{}')
           subject=$(git tag -l --format='%(contents:subject)' nightly)
           ref=${subject%% *}

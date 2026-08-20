@@ -1,28 +1,24 @@
 #!/bin/bash
 set -euo pipefail
 
-c0=$'\e[0m'
-c1=$'\e[31m'
-c2=$'\e[32m'
-c3=$'\e[33m'
-c4=$'\e[34m'
-c5=$'\e[35m'
-c6=$'\e[36m'
+cat <<'EOF'
+usage: development.sh [-f|--fetch] [tar]
+  default tar: /tmp/devtools-frontend.tar.zst
+  -f  download even if tar exists
 
-cat <<EOF
- ${c3}${c1}usage${c0} ${c4}development.sh${c3} [-f|--fetch] [tar]
-   ${c5}default tar:${c2} /tmp/devtools-frontend.tar.zst
-   ${c3}-f${c6}  download even if tar exists
-   ${c6}knobs${c0}  ${c2}HUE SAT SPREAD HUE_*${c0}  ${c5}defaults in overlay.sh${c0}
+  knobs: HUE SAT SPREAD HUE_ERROR HUE_BLUE HUE_GREEN HUE_ORANGE HUE_YELLOW HUE_CYAN HUE_PINK
+  defaults in overlay.sh
+
+HUE=200 SAT=35 SPREAD=20 development.sh
 EOF
 
-readonly repo='metaory/devtools-frontend-custom'
-readonly dest="$HOME/.local/share/chromium"
-readonly artifact='devtools-frontend.tar.zst'
-readonly frontend="file://$dest/front_end"
-readonly tokens="$dest/front_end/design_system_tokens.css"
-readonly base="$dest/design_system_tokens.base.css"
+readonly repo='metaory/devtools-theme'
 readonly mark='/* === theme.css === */'
+readonly dest="$HOME/.local/share/chromium"
+readonly frontend="file://$dest/front_end"
+readonly artifact='devtools-frontend.tar.zst'
+readonly base="$dest/design_system_tokens.base.css"
+readonly tokens="$dest/front_end/design_system_tokens.css"
 readonly common="$dest/front_end/ui/legacy/inspectorCommon.css.js"
 declare p fetch path
 
@@ -39,7 +35,7 @@ tar=${path:-/tmp/$artifact}
 
 [[ ${fetch-} || -s $tar || ! ${path-} ]] || exit 1
 [[ ${fetch-} || ! -s $tar ]] && {
-  echo -e "\n$c3 downloading latest action run artifact in 3s ... $c0\n"
+  printf '\ndownloading latest action run artifact in 3s ...\n\n'
   sleep 3
 
   run="$(gh run list -R "$repo" \
@@ -98,7 +94,10 @@ bash "$root/scripts/overlay.sh" | cat "$base" - >"$tokens"
 
 last=$(tail -n1 "$common")
 sed -i -e '\|/\* === inspector.css === \*/|,$d' -e '/sourceURL/d' "$common"
-{ bash "$root/scripts/overlay.sh" inspector.css; printf '%s\n' "$last"; } >>"$common"
+{
+  bash "$root/scripts/overlay.sh" inspector.css
+  printf '%s\n' "$last"
+} >>"$common"
 
 printf 'theme %s\nfrontend %s\n' "$tokens" "$frontend"
 
