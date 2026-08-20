@@ -7,6 +7,7 @@ on:
       - theme.css
       - config.css
       - inspector.css
+      - scripts/test.sh
       - scripts/build.sh
       - scripts/overlay.sh
       - scripts/resolve.sh
