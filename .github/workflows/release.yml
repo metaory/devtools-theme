@@ -129,9 +129,11 @@ jobs:
           SHA: ${{ steps.nightly.outputs.sha }}
           CHROME: ${{ steps.nightly.outputs.chrome }}
         run: |
+          git checkout --detach "$SHA"
           git -c user.name=github-actions[bot] \
             -c user.email=github-actions[bot]@users.noreply.github.com \
-            tag -a "$TAG" "$SHA" -m "$TAG for Chrome ${CHROME%%.*}"
+            commit --allow-empty -m "$TAG for Chrome ${CHROME%%.*}"
+          git tag -a "$TAG" -m "$TAG for Chrome ${CHROME%%.*}"
           git push origin "refs/tags/$TAG"
 
       - name: create release
