@@ -30,27 +30,29 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v7
+      - name: checkout
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - env:
-          GH_TOKEN: ${{ github.token }}
-          BUMP: ${{ github.event.inputs.bump }}
-          NOTES: ${{ github.event.inputs.notes }}
-        run: |
-          git fetch origin --tags --force
+      - name: fetch tags
+        run: git fetch origin --tags --force
 
+      - name: version bump
+        id: bump
+        env:
+          BUMP: ${{ github.event.inputs.bump }}
+        run: |
           last=$(git tag -l 'v[0-9]*' --sort=-version:refname | head -n1)
           ver=${last#v}
           ver=${ver:-0.1.0}
           core=${ver%%-*}
           pre=${ver#"$core"}
           n=${pre#-rc.}
-
           IFS=. read -r maj min pat <<< "$core"
-
           case $BUMP in
             major) ver="$((maj + 1)).0.0" ;;
             minor) ver="$maj.$((min + 1)).0" ;;
@@ -60,47 +62,78 @@ jobs:
                 || ver="$maj.$min.$((pat + 1))-rc.1"
               ;;
           esac
+          printf 'tag=v%s\n' "$ver" | tee -a "$GITHUB_OUTPUT"
 
-          tag=v$ver
+      - name: resolve nightly
+        id: nightly
+        run: |
           sha=$(git rev-parse 'nightly^{}')
           subject=$(git tag -l --format='%(contents:subject)' nightly)
           ref=${subject%% *}
           chrome=${subject#*chromium@}
-
           [[ $subject == *chromium@* && -n $ref && -n $chrome ]]
+          {
+            printf 'sha=%s\n' "$sha"
+            printf 'ref=%s\n' "$ref"
+            printf 'chrome=%s\n' "$chrome"
+          } | tee -a "$GITHUB_OUTPUT"
 
+      - name: resolve artifact
+        id: run
+        env:
+          SHA: ${{ steps.nightly.outputs.sha }}
+        run: |
           run=$(gh run list --workflow Build --status success --limit 30 \
             --json databaseId,headSha |
-            jq -r --arg sha "$sha" '.[] | select(.headSha == $sha) | .databaseId' |
+            jq -r --arg sha "$SHA" '.[] | select(.headSha == $sha) | .databaseId' |
             head -n1)
           test -n "$run"
+          printf 'id=%s\n' "$run" | tee -a "$GITHUB_OUTPUT"
 
-          gh run download "$run" -n devtools-frontend.tar.zst -D "$RUNNER_TEMP"
-          file=$(find "$RUNNER_TEMP" -name devtools-frontend.tar.zst -type f | head -n1)
-          test -f "$file"
-
-          major=${chrome%%.*}
-          title="$tag for Chrome $major"
-          notes=$(printf 'Built against Chrome %s (`chromium@%s`, DevTools `%s`).' \
-            "$major" "$chrome" "$ref")
-
-          [[ -z ${NOTES:-} ]] || notes+=$'\n\n'"${NOTES%$'\n'}"
-
-          prev=$(git tag -l 'v[0-9]*' --sort=-version:refname | grep -vxF "$tag" | head -n1)
-
-          [[ -z $prev ]] || {
-            log=$(git log --format='- %s' "$prev".."$sha")
-            [[ -z $log ]] || notes+=$'\n\n'"${log%$'\n'}"
-          }
-
-          notes+=$'\n'
-
-          gh release view "$tag" >/dev/null 2>&1 && {
-            printf 'release %s already exists\n' "$tag" >&2
+      - name: check release
+        env:
+          TAG: ${{ steps.bump.outputs.tag }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 && {
+            printf 'release %s already exists\n' "$TAG" >&2
             exit 1
           }
 
+      - name: download artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: devtools-frontend.tar.zst
+          path: ${{ runner.temp }}
+          run-id: ${{ steps.run.outputs.id }}
+          github-token: ${{ github.token }}
+
+      - name: release notes
+        env:
+          TAG: ${{ steps.bump.outputs.tag }}
+          SHA: ${{ steps.nightly.outputs.sha }}
+          REF: ${{ steps.nightly.outputs.ref }}
+          NOTES: ${{ github.event.inputs.notes }}
+          CHROME: ${{ steps.nightly.outputs.chrome }}
+        run: |
+          {
+            printf 'Built against Chrome %s (`chromium@%s`, DevTools `%s`).\n' \
+              "${CHROME%%.*}" "$CHROME" "$REF"
+            [[ -z ${NOTES:-} ]] || printf '\n%s\n' "${NOTES%$'\n'}"
+            prev=$(git tag -l 'v[0-9]*' --sort=-version:refname | grep -vxF "$TAG" | head -n1)
+            [[ -z $prev ]] || log=$(git log --format='- %s' "$prev".."$SHA")
+            [[ -z ${log:-} ]] || printf '\n%s\n' "${log%$'\n'}"
+          } > "$RUNNER_TEMP/notes.md"
+
+      - name: create release
+        env:
+          TAG: ${{ steps.bump.outputs.tag }}
+          SHA: ${{ steps.nightly.outputs.sha }}
+          CHROME: ${{ steps.nightly.outputs.chrome }}
+        run: |
+          file=$RUNNER_TEMP/devtools-frontend.tar.zst
+          test -f "$file"
           pre=()
-          [[ $tag == *-* ]] && pre=(--prerelease)
-          gh release create "$tag" "$file" --draft --target "$sha" \
-            --title "$title" --notes "$notes" "${pre[@]}"
+          [[ $TAG == *-* ]] && pre=(--prerelease)
+          gh release create "$TAG" "$file" --draft --target "$SHA" \
+            --title "$TAG for Chrome ${CHROME%%.*}" \
+            --notes-file "$RUNNER_TEMP/notes.md" "${pre[@]}"
