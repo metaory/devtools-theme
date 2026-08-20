@@ -4,16 +4,17 @@ set -euo pipefail
 if [[ ! ${1-} ]]; then
   cat <<EOF
 usage: screenshot.sh front_end
-  writes .github/assets/screenshot-{1..n}.png
-  HUES SPREAD SAT  required
-  RADIUS           32
+  writes .github/assets/screenshot-{0..n}.png
+  HUE               default preset → screenshot-0
+  HUES SPREAD SAT   required
+  RADIUS            32
 
-HUES='270 180 90 0' SPREAD=20 SAT=50 screenshot.sh front_end
+HUE=270 HUES='80 180 250 280 320 10' SPREAD=20 SAT=50 screenshot.sh front_end
 EOF
   exit 1
 fi
 
-: "${HUES:?}" "${SPREAD:?}" "${SAT:?}"
+: "${HUE:?}" "${HUES:?}" "${SPREAD:?}" "${SAT:?}"
 
 die() { printf '%s\n' "$*" >&2 && exit 1; }
 need() { command -v "$1" >/dev/null || die "missing command: $1"; }
@@ -184,12 +185,12 @@ function gallery {
   local n=${#hues[@]} i repo=${GITHUB_REPOSITORY:-metaory/devtools-theme}
   local src="https://raw.githubusercontent.com/$repo/screenshots"
   printf '  <!-- screenshots -->\n'
-  for ((i = 1; i <= n; i++)); do
+  for ((i = 1; i < n; i++)); do
     ((i % 2)) && printf '  '
     printf '<img src="%s/screenshot-%s.png" width="40%%" />' "$src" "$i"
-    ((i % 2 && i < n)) && printf '&nbsp;&nbsp;'
-    ((i % 2 == 0 && i < n)) && printf '\n  <br>\n  <br>\n'
-    ((i == n)) && printf '\n'
+    ((i % 2 && i < n - 1)) && printf '&nbsp;&nbsp;'
+    ((i % 2 == 0 && i < n - 1)) && printf '\n  <br>\n  <br>\n'
+    ((i == n - 1)) && printf '\n'
   done
   printf '  <!-- /screenshots -->\n'
 }
@@ -213,14 +214,13 @@ function patch_readme {
 }
 
 rm -f "$out"/screenshot-*.png
-read -ra hues <<<"$HUES"
+read -ra hues <<<"$HUE $HUES"
 
 for i in "${!hues[@]}"; do
   write_app "${hues[i]}"
-  n=$((i + 1))
-  capture "$n-light" --blink-settings=preferredColorScheme=1
-  capture "$n-dark" --blink-settings=preferredColorScheme=0
-  pair "$n"
+  capture "$i-light" --blink-settings=preferredColorScheme=1
+  capture "$i-dark" --blink-settings=preferredColorScheme=0
+  pair "$i"
 done
 
 patch_readme
