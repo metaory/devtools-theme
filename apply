@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 [[ ${1-} == -h || ${1-} == --help ]] && {
   cat <<'EOF'
 usage: apply [-f] [-o] [tar]
   -f  fetch and extract even if frontend exists
-  -o  open Chrome after patch
+  -o  open browser after patch
 
   default tar: /tmp/devtools-frontend.tar.zst
   dest: ~/.local/share/chromium
@@ -142,12 +142,18 @@ for b in chromium google-chrome google-chrome-stable \
     break
   }
 done
-browser=${browser:-chromium}
 
-printf 'theme %s\n%s --custom-devtools-frontend="%s"\n' \
-  "$tokens" "$browser" "$frontend"
+printf 'theme %s\n' "$tokens"
 
-function chrome_running {
+[[ $browser ]] || {
+  printf 'no Chrome/Chromium binary found\n' >&2
+  printf 'Brave/Edge/…: launch with --custom-devtools-frontend="%s"\n' "$frontend" >&2
+  exit 0
+}
+
+printf '%s --custom-devtools-frontend="%s"\n' "$browser" "$frontend"
+
+function browser_running {
   command -v pgrep >/dev/null || return 1
   pgrep -x chromium >/dev/null ||
     pgrep -x chrome >/dev/null ||
@@ -156,8 +162,13 @@ function chrome_running {
     pgrep -x 'Google Chrome' >/dev/null
 }
 
-if chrome_running; then
-  printf 'quit Chrome and relaunch, or it ignores extra flags\n'
-elif [[ ${open-} ]]; then
-  exec "$browser" --custom-devtools-frontend="$frontend"
+[[ ${open-} ]] || exit 0
+
+if browser_running; then
+  printf 'quit the browser and relaunch, or it ignores extra flags\n'
+  exit 0
 fi
+
+exec "$browser" --custom-devtools-frontend="$frontend"
+
+# vim: ft=bash
