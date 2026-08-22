@@ -9,7 +9,7 @@ for i in {0..7}; do
   printf -v "c$((i + 8))" '\033[1;9%sm' "$i"
 done
 
-fill() { printf "${c8}%0.s${1:-─}${n}" $(seq "$(tput cols)"); }
+fill() { printf "${c8}%0.s${1:-─}${n}" $(seq "$(tput cols 2>/dev/null || echo 80)"); }
 say() { k=c$1 && printf ">\033[38;5;205m %s${3:+:}${!k}%s${n}\n" "$2" "${3:+ $3}"; }
 
 need() {
