@@ -31,8 +31,8 @@ printf 'fixture license\n' >"$archive/LICENSE"
 tar -C "$archive" -cf "$tar" front_end LICENSE
 
 # First call extracts. The second verifies reapplying is idempotent.
-HOME="$home" "$root/apply" "$tar" >/dev/null
-HOME="$home" "$root/apply" "$tar" >/dev/null
+HOME="$home" "$root/apply" "$tar" >/dev/null 2>&1
+HOME="$home" "$root/apply" "$tar" >/dev/null 2>&1
 
 tokens=$(<"$front/design_system_tokens.css")
 common=$(<"$front/ui/legacy/inspectorCommon.css.js")
@@ -57,7 +57,7 @@ fi
 empty="$tmp/empty"
 mkdir -p "$empty"
 
-msg=$(HOME="$empty" "$root/apply" "$tmp/no-such.tar" 2>&1) && fail '⁈‼ missing archive accepted'
+msg=$(HOME="$empty" "$root/apply" "$tmp/no-such.tar" 2>&1 >/dev/null) && fail '⁈‼ missing archive accepted'
 
 [[ $msg == *'missing archive'* ]] || fail '⁈‼ missing archive silent'
 

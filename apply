@@ -10,11 +10,11 @@ for i in {0..7}; do
 done
 
 fill() { printf "${c8}%0.s${1:-─}${n}" $(seq "$(tput cols 2>/dev/null || echo 80)"); }
-say() { k=c$1 && printf ">\033[38;5;205m %s${3:+:}${!k}%s${n}\n" "$2" "${3:+ $3}"; }
+say() { k=c$1 && printf ">\033[38;5;205m %s${3:+:}${!k}%s${n}\n" "$2" "${3:+ $3}" >&2; }
 
 need() {
   command -v "$1" >/dev/null || {
-    say 1 missing "$1" >&2
+    say 1 missing "$1"
     exit 1
   }
 }
@@ -98,14 +98,14 @@ function extract {
     :
   else
     rm -rf "$stage"
-    say 1 need 'zstd, or a tar that reads .zst' >&2
+    say 1 need 'zstd, or a tar that reads .zst'
     exit 1
   fi
 
   [[ -f $stage/front_end/design_system_tokens.css &&
     -f $stage/front_end/ui/legacy/inspectorCommon.css.js ]] || {
     rm -rf "$stage"
-    say 1 archive 'has no DevTools frontend' >&2
+    say 1 archive 'has no DevTools frontend'
     exit 1
   }
 
@@ -123,7 +123,7 @@ function pull {
     return
   }
   [[ ${fetch-} || -s $tar || ! ${path-} ]] || {
-    say 1 missing 'archive:' "$tar" >&2
+    say 1 'missing archive' "$tar"
     exit 1
   }
   [[ -f $tokens ]] && say 3 replace frontend
@@ -174,8 +174,8 @@ for b in chromium google-chrome google-chrome-stable \
 done
 
 [[ $browser ]] || {
-  say 3 no 'Chrome/Chromium binary found' >&2
-  say 6 'Brave/Edge/…:' "launch with --custom-devtools-frontend=\"$frontend\"" >&2
+  say 3 no 'Chrome/Chromium binary found'
+  say 6 'Brave/Edge/…:' "launch with --custom-devtools-frontend=\"$frontend\""
   exit 0
 }
 
