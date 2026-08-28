@@ -120,7 +120,7 @@ function pull {
   [[ ${fetch-} || ! -f $tokens ]] || {
     say 2 skip fetch
     [[ -s $tar ]] && say 6 unused "$tar"
-    return
+    return 0
   }
   [[ ${fetch-} || -s $tar || ! ${path-} ]] || {
     say 1 'missing archive' "$tar"
