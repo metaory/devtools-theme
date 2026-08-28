@@ -23,7 +23,7 @@ function parse {
       [[ ${p%%:*} == "$css" ]] || continue
       printf '%s %s\n' "${p#*:}" "$val"
     done
-  done < <(sed -En 's/^[[:space:]]*--([a-z-]+):[[:space:]]*([0-9]+);.*/\1 \2/p' "$1")
+  done < <(sed -En 's/^[[:space:]]*--([a-z-]+):[[:space:]]*([^;]+);.*/\1 \2/p' "$1")
 }
 
 function fill {
