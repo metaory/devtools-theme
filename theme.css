@@ -14,51 +14,51 @@
 
   --hue-primary: var(--hue);
   --hue-secondary: calc(var(--hue) + var(--spread));
-  --hue-tertiary: calc(var(--hue) + var(--spread) * 2);
+  --hue-tertiary: calc(var(--hue) + var(--spread) * 3);
   --hue-indigo: calc(var(--hue) - var(--spread) / 2);
   --hue-purple: calc(var(--hue) + var(--spread));
   --hue-neutral: var(--hue);
   --hue-neutral-variant: calc(var(--hue) + var(--spread) / 2);
 
-  --s-0: calc(50% * var(--sat));
-  --s-10: calc(70% * var(--sat));
-  --s-15: calc(60% * var(--sat));
-  --s-20: calc(60% * var(--sat));
-  --s-25: calc(50% * var(--sat));
-  --s-30: calc(50% * var(--sat));
-  --s-35: calc(40% * var(--sat));
-  --s-40: calc(40% * var(--sat));
-  --s-50: calc(40% * var(--sat));
-  --s-55: calc(40% * var(--sat));
+  --s-0: calc(20% * var(--sat));
+  --s-10: calc(22% * var(--sat));
+  --s-15: calc(24% * var(--sat));
+  --s-20: calc(26% * var(--sat));
+  --s-25: calc(28% * var(--sat));
+  --s-30: calc(30% * var(--sat));
+  --s-35: calc(32% * var(--sat));
+  --s-40: calc(34% * var(--sat));
+  --s-50: calc(36% * var(--sat));
+  --s-55: calc(38% * var(--sat));
   --s-60: calc(40% * var(--sat));
-  --s-70: calc(40% * var(--sat));
-  --s-80: calc(50% * var(--sat));
-  --s-90: calc(60% * var(--sat));
-  --s-94: calc(50% * var(--sat));
-  --s-95: calc(60% * var(--sat));
-  --s-98: calc(70% * var(--sat));
-  --s-99: calc(70% * var(--sat));
-  --s-100: calc(10% * var(--sat));
+  --s-70: calc(42% * var(--sat));
+  --s-80: calc(44% * var(--sat));
+  --s-90: calc(46% * var(--sat));
+  --s-94: calc(48% * var(--sat));
+  --s-95: calc(50% * var(--sat));
+  --s-98: calc(52% * var(--sat));
+  --s-99: calc(54% * var(--sat));
+  --s-100: calc(56% * var(--sat));
 
-  --l-0: 10%;
+  --l-0: 8%;
   --l-10: 10%;
-  --l-15: 10%;
-  --l-20: 10%;
-  --l-25: 10%;
-  --l-35: 20%;
+  --l-15: 12%;
+  --l-20: 14%;
+  --l-25: 16%;
   --l-30: 20%;
-  --l-40: 30%;
-  --l-50: 40%;
+  --l-35: 24%;
+  --l-40: 32%;
+  --l-50: 38%;
   --l-55: 40%;
-  --l-60: 50%;
-  --l-70: 60%;
-  --l-80: 70%;
-  --l-90: 80%;
-  --l-94: 80%;
-  --l-95: 80%;
-  --l-98: 80%;
-  --l-99: 80%;
-  --l-100: 80%;
+  --l-60: 42%;
+  --l-70: 44%;
+  --l-80: 46%;
+  --l-90: 48%;
+  --l-94: 50%;
+  --l-95: 52%;
+  --l-98: 54%;
+  --l-99: 56%;
+  --l-100: 58%;
 
   --ref-palette-primary0: hsl(var(--hue-primary) var(--s-0) var(--l-0));
   --ref-palette-primary10: hsl(var(--hue-primary) var(--s-10) var(--l-10));
@@ -273,8 +273,55 @@
   --color-scrollbar-other: var(--ref-palette-neutral60);
   --color-scrollbar-other-hover: var(--ref-palette-neutral40);
   scrollbar-color: var(--ref-palette-neutral60) var(--ref-palette-neutral95);
+  --sys-color-token-variable: var(--ref-palette-neutral-variant40);
+  --sys-color-token-property: var(--ref-palette-neutral-variant30);
+  --sys-color-token-property-special: var(--ref-palette-indigo50);
+  --sys-color-token-type: var(--ref-palette-primary50);
+  --sys-color-token-definition: var(--ref-palette-secondary30);
+  --sys-color-token-variable-special: var(--ref-palette-indigo30);
+  --sys-color-token-builtin: var(--ref-palette-indigo20);
+  --sys-color-token-keyword: var(--ref-palette-primary40);
+  --sys-color-token-number: var(--ref-palette-secondary50);
+  --sys-color-token-string: var(--ref-palette-tertiary30);
+  --sys-color-token-string-special: var(--ref-palette-tertiary20);
+  --sys-color-token-atom: var(--ref-palette-indigo40);
+  --sys-color-token-tag: var(--ref-palette-tertiary40);
+  --sys-color-token-attribute: var(--ref-palette-secondary40);
+  --sys-color-token-attribute-value: var(--ref-palette-primary30);
+  --sys-color-token-comment: var(--ref-palette-neutral-variant50);
+  --sys-color-token-meta: var(--ref-palette-neutral60);
+  --sys-color-token-deleted: var(--ref-palette-error50);
+  --sys-color-token-inserted: var(--ref-palette-green60);
+  --sys-color-token-pseudo-element: var(--ref-palette-tertiary50);
+  --sys-color-token-subtle: var(--ref-palette-neutral50);
 
+  --sys-color-surface-yellow: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ref-palette-yellow90) 80%, var(--sys-color-primary) 30%) 30%,
+    var(--ref-palette-neutral99)
+  );
+  --sys-color-surface-yellow-high: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ref-palette-yellow90) 80%, var(--sys-color-primary) 30%) 60%,
+    var(--ref-palette-neutral99)
+  );
+  --sys-color-surface-error: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ref-palette-error90) 80%, var(--sys-color-primary) 30%) 30%,
+    var(--ref-palette-neutral99)
+  );
+  --sys-color-surface-green: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ref-palette-green90) 80%, var(--sys-color-primary) 30%) 30%,
+    var(--ref-palette-neutral99)
+  );
+  --sys-color-on-surface-yellow: color-mix(in srgb, var(--ref-palette-yellow20) 80%, var(--sys-color-primary) 30%);
+  --sys-color-on-surface-error: color-mix(in srgb, var(--ref-palette-error30) 80%, var(--sys-color-primary) 30%);
+  --sys-color-on-surface-green: color-mix(in srgb, var(--ref-palette-green20) 80%, var(--sys-color-primary) 30%);
+
+  --sys-color-tonal-container: var(--ref-palette-primary85);
   &.theme-with-dark-background {
+    --sys-color-tonal-container: var(--ref-palette-secondary25);
     --sys-color-divider: color-mix(in srgb, var(--ref-palette-neutral90) 8%, transparent);
     --sys-color-divider-on-tonal-container: color-mix(in srgb, var(--ref-palette-neutral90) 6%, transparent);
     --sys-color-divider-prominent: color-mix(in srgb, var(--ref-palette-neutral90) 14%, transparent);
@@ -284,15 +331,62 @@
     --color-scrollbar-other: var(--ref-palette-neutral40);
     --color-scrollbar-other-hover: var(--ref-palette-neutral60);
     scrollbar-color: var(--ref-palette-neutral40) var(--ref-palette-neutral15);
+    --sys-color-token-variable: var(--ref-palette-neutral-variant80);
+    --sys-color-token-property: var(--ref-palette-neutral-variant70);
+    --sys-color-token-property-special: var(--ref-palette-indigo90);
+    --sys-color-token-type: var(--ref-palette-primary90);
+    --sys-color-token-definition: var(--ref-palette-secondary70);
+    --sys-color-token-variable-special: var(--ref-palette-indigo70);
+    --sys-color-token-builtin: var(--ref-palette-indigo60);
+    --sys-color-token-keyword: var(--ref-palette-primary80);
+    --sys-color-token-number: var(--ref-palette-secondary90);
+    --sys-color-token-string: var(--ref-palette-tertiary70);
+    --sys-color-token-string-special: var(--ref-palette-tertiary60);
+    --sys-color-token-atom: var(--ref-palette-indigo80);
+    --sys-color-token-tag: var(--ref-palette-tertiary80);
+    --sys-color-token-attribute: var(--ref-palette-secondary80);
+    --sys-color-token-attribute-value: var(--ref-palette-primary70);
+    --sys-color-token-comment: var(--ref-palette-neutral-variant90);
+    --sys-color-token-meta: var(--ref-palette-neutral60);
+    --sys-color-token-deleted: var(--ref-palette-error50);
+    --sys-color-token-inserted: var(--ref-palette-green60);
+    --sys-color-token-pseudo-element: var(--ref-palette-tertiary90);
+    --sys-color-token-subtle: var(--ref-palette-neutral60);
+
+    --sys-color-surface-yellow: color-mix(
+      in srgb,
+      color-mix(in srgb, var(--ref-palette-yellow30) 80%, var(--sys-color-primary) 30%) 30%,
+      var(--ref-palette-neutral10)
+    );
+    --sys-color-surface-yellow-high: color-mix(
+      in srgb,
+      color-mix(in srgb, var(--ref-palette-yellow30) 80%, var(--sys-color-primary) 30%) 60%,
+      var(--ref-palette-neutral10)
+    );
+    --sys-color-surface-error: color-mix(
+      in srgb,
+      color-mix(in srgb, var(--ref-palette-error30) 80%, var(--sys-color-primary) 30%) 30%,
+      var(--ref-palette-neutral10)
+    );
+    --sys-color-surface-green: color-mix(
+      in srgb,
+      color-mix(in srgb, var(--ref-palette-green30) 80%, var(--sys-color-primary) 30%) 30%,
+      var(--ref-palette-neutral10)
+    );
+    --sys-color-on-surface-yellow: color-mix(in srgb, var(--ref-palette-yellow90) 80%, var(--sys-color-primary) 30%);
+    --sys-color-on-surface-error: color-mix(in srgb, var(--ref-palette-error90) 80%, var(--sys-color-primary) 30%);
+    --sys-color-on-surface-green: color-mix(in srgb, var(--ref-palette-green90) 80%, var(--sys-color-primary) 30%);
   }
 
   &.baseline-default {
+    --sys-color-divider: var(--ref-palette-neutral80);
     --sys-color-surface1: color-mix(in srgb, var(--ref-palette-primary40) 5%, var(--ref-palette-neutral100));
     --sys-color-surface2: color-mix(in srgb, var(--ref-palette-primary40) 8%, var(--ref-palette-neutral100));
     --sys-color-surface3: color-mix(in srgb, var(--ref-palette-primary40) 11%, var(--ref-palette-neutral100));
     --sys-color-surface4: color-mix(in srgb, var(--ref-palette-primary40) 12%, var(--ref-palette-neutral100));
     --sys-color-surface5: color-mix(in srgb, var(--ref-palette-primary40) 14%, var(--ref-palette-neutral100));
     &.theme-with-dark-background {
+      --sys-color-divider: var(--ref-palette-neutral30);
       --sys-color-surface1: color-mix(in srgb, var(--ref-palette-primary80) 5%, var(--ref-palette-neutral10));
       --sys-color-surface2: color-mix(in srgb, var(--ref-palette-primary80) 8%, var(--ref-palette-neutral10));
       --sys-color-surface3: color-mix(in srgb, var(--ref-palette-primary80) 11%, var(--ref-palette-neutral10));
