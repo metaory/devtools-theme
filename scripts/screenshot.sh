@@ -9,7 +9,7 @@ usage: screenshot.sh front_end
   HUES SPREAD SAT   required
   RADIUS            26
 
-HUE=270 HUES='80 180 250 280 320 10' SPREAD=20 SAT=50 screenshot.sh front_end
+HUE=270 HUES='80 180 250 280 320 10' SPREAD=20 SAT=50 ./screenshot.sh front_end
 EOF
   exit 1
 fi
