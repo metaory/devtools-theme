@@ -7,7 +7,7 @@ usage: screenshot.sh front_end
   writes .github/assets/screenshot-{0..n}.png
   HUE               default preset → screenshot-0
   HUES SPREAD SAT   required
-  RADIUS            28
+  RADIUS            26
 
 HUE=270 HUES='80 180 250 280 320 10' SPREAD=20 SAT=50 screenshot.sh front_end
 EOF
@@ -162,7 +162,7 @@ function capture {
 }
 
 function round {
-  local img=$1 r=${RADIUS:-28}
+  local img=$1 r=${RADIUS:-26}
   local w h
   read -r w h < <(identify -format '%w %h\n' "$img")
   convert "$img" \
