@@ -67,6 +67,8 @@ $(fill)
 ${c2}  apply${n}             overlay, fetch if needed
 ${c2}  apply <tar>${n}       extract this archive if needed
 ${c2}  apply -f -o <tar>${n} fetch to path, extract, open
+
+${c3}HUE=170 SAT=40 ${c2}./apply -o${n}
 $(fill)
 EOF
 
@@ -199,6 +201,6 @@ if browser_running; then
 fi
 
 say 2 open "$browser"
-exec "$browser" --custom-devtools-frontend="$frontend"
+exec "$browser" --custom-devtools-frontend="$frontend" --auto-open-devtools-for-tabs
 
 # vim: ft=bash
