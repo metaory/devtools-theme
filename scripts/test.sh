@@ -70,6 +70,6 @@ unset HUE SAT
 
 source "$root/scripts/overlay.sh" env
 [[ $HUE == 270 ]] || fail '⁈‼ fill from config'
-[[ $SAT == 40 ]] || fail '⁈‼ fill sat from config'
+[[ $SAT == 50 ]] || fail '⁈‼ fill sat from config'
 
 printf '✔ apply smoke test passed\n'

@@ -35,7 +35,7 @@
 
 ---
 
-This repo ships a themed DevTools UI for `--custom-devtools-frontend`
+This repo ships a themed DevTools UI
 
 Releases track Chrome **stable**
 
