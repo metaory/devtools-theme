@@ -131,10 +131,11 @@ async function selectApp() {
   ]);
   await ViewManager.ViewManager.instance().showView("elements");
   const panel = ElementsPanel.ElementsPanel.instance();
+  const widget = panel.getDOMTreeWidgetForTesting?.();
   const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   const deadline = performance.now() + 20_000;
 
-  const rootOf = () => panel.getTreeOutlineForTesting()?.rootDOMNode;
+  const rootOf = () => widget?.rootDOMNode ?? panel.getTreeOutlineForTesting?.()?.rootDOMNode;
 
   let root = rootOf();
   while (!root) {
@@ -142,6 +143,8 @@ async function selectApp() {
     await pause(100);
     root = rootOf();
   }
+
+  await widget?.expandRecursively?.(root, 8);
 
   const walk = async (node) => {
     if (node.getAttribute?.("id") === "app") return node;
